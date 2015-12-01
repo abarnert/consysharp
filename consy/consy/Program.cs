@@ -93,6 +93,48 @@ namespace consy
         }
     }
 
+    public class Stack<T>
+    {
+        Cons<T> lst = null;
+        public Stack() {}
+        public void push(T value)
+        {
+            lst = new Cons<T>(value, lst);
+        }
+        public T pop()
+        {
+            if (lst == null)
+                throw new InvalidOperationException();
+            T value = lst.head;
+            lst = lst.tail;
+            return value;
+        }
+        // Annoyingly, there doesn't seem to be a good way to
+        // do this with an optional parameter. You wouldn't really
+        // want null as a default value even for reference types
+        // (because then you can't safely put null on a stack), but
+        // for value types you can't use it even if you wanted to
+        // (and there's no way to restrict T to be a reference type
+        // or V? for some value type V). Of course the right way to
+        // do it is to use a union type of T | PrivateSentinel with
+        // default(PrivateSentinel), equivalent to what Python does
+        // dynamically, and of course equivalent to Maybe. But .NET
+        // doesn't come with any way to do that built-in, and it
+        // seemed a bit silly to implement Maybe just for this one
+        // use, so I went with overloading instead. Sigh...
+        public T pop(T defval)
+        {
+            try
+            {
+                return pop();
+            }
+            catch (InvalidOperationException)
+            {
+                return defval;
+            }
+        }
+    }
+
     class Program
     {
         static void Main(string[] args)
@@ -106,6 +148,22 @@ namespace consy
             var zs = LazyCons<int>.FromEnumerable(xs);
             foreach (var z in zs) Console.WriteLine(z);
             foreach (var z in zs) Console.WriteLine(z);
+
+            var ss = new Stack<int>();
+            ss.push(1);
+            ss.push(2);
+            Console.WriteLine(ss.pop());
+            Console.WriteLine(ss.pop());
+            Console.WriteLine(ss.pop(0));
+            try
+            {
+                Console.WriteLine(ss.pop());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
         }
     }
 }

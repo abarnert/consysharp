@@ -1,4 +1,4 @@
-class Cons:
+﻿class Cons:
     def __init__(self, head=None, tail=None):
         self.head, self.tail = head, tail
     @classmethod
@@ -42,6 +42,22 @@ class LazyCons:
         if self.tail:
             yield from self.tail
 
+class Stack:
+    _sentinel = object()
+    def __init__(self):
+        self.lst = None
+    def push(self, value):
+        self.lst = Cons(value, self.lst)
+    def pop(self, default=_sentinel):
+        try:
+            value, self.lst = self.lst.head, self.lst.tail
+            return value
+        except AttributeError:
+            if default is self._sentinel:
+                raise ValueError('pop from an empty {}'.format(
+                    type(self).__name__))
+            return default
+
 if __name__ == '__main__':
     xs = Cons.fromiter([1, 2, 3])
     for x in xs: print(x)
@@ -52,3 +68,15 @@ if __name__ == '__main__':
     zs = LazyCons.fromiter(xs)
     for z in zs: print(z)
     for z in zs: print(z)
+
+    ss = Stack()
+    ss.push(1)
+    ss.push(2)
+    print(ss.pop())
+    print(ss.pop())
+    print(ss.pop(None))
+    try:
+        print(ss.pop())
+    except Exception as e:
+        print(e)
+
