@@ -7,6 +7,16 @@ using System.Threading.Tasks;
 
 namespace consy
 {
+    // Gah, you can't just have functions in C#, just like Java.
+    // Worse, you _can_ have _local_ functions, just not namespace-level.
+    public static class Funky
+    {
+        public static Func<T1, T2, U> Flip<T1, T2, U>(Func<T2, T1, U> f)
+        {
+            return (t1, t2) => f(t2, t1);
+        }
+    } 
+
     public class Cons<T> : IEnumerable<T>
     {
         public T head;
@@ -35,6 +45,23 @@ namespace consy
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();    
+        }
+
+        // In Python, these are not only free functions, but also work on
+        // anything that duck-types as a Cons, like LazyCons. In C#, I'd
+        // have to create an ICons<T> interface for that. I suppose that's
+        // what I'm supposed to do--and an ICons for Generic.ICons<T> to
+        // inherit, just like the stuff in .NET. Because what everyone wants
+        // is more boilerplate than Java. Anyway, as static members of Cons
+        // that work on Cons, these work just fine. 
+        public static U FoldL<U>(Func<U, T, U> f, Cons<T> t, U start = default(U))
+        {
+            return (t == null) ? start : FoldL(f, t.tail, f(start, t.head));
+        }
+
+        public static U FoldR<U>(Func<T, U, U> f, Cons<T> t, U start = default(U))
+        {
+            return (t == null) ? start : f(t.head, FoldR(f, t.tail));
         }
     }
 
@@ -91,6 +118,7 @@ namespace consy
         {
             return GetEnumerator();
         }
+
     }
 
     public class Stack<T>
@@ -218,6 +246,12 @@ namespace consy
             var zs = LazyCons<int>.FromEnumerable(xs);
             foreach (var z in zs) Console.WriteLine(z);
             foreach (var z in zs) Console.WriteLine(z);
+
+            Func<int, Cons<int>, Cons<int>> cons = (q, qs) => new Cons<int>(q, qs);
+            var ws = Cons<int>.FoldR(cons, xs);
+            foreach (var w in ws) Console.WriteLine(w);
+            var vs = Cons<int>.FoldL(Funky.Flip(cons), xs);
+            foreach (var v in vs) Console.WriteLine(v);
 
             var ss = new Stack<int>();
             ss.push(1);

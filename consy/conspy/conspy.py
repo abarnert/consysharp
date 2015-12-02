@@ -1,4 +1,12 @@
-﻿class Cons:
+﻿from functools import partial, reduce, wraps
+
+def flip(f):
+    @wraps(f)
+    def wrapper(x, y):
+        return f(y, x)
+    return wrapper
+
+class Cons:
     def __init__(self, head=None, tail=None):
         self.head, self.tail = head, tail
     @classmethod
@@ -42,6 +50,12 @@ class LazyCons:
         if self.tail:
             yield from self.tail
 
+def foldl(f, xs, start=None):
+    return foldl(f, xs.tail, f(start, xs.head)) if xs else start
+
+def foldr(f, xs, start=None):
+    return f(xs.head, foldr(f, xs.tail, start)) if xs else start
+
 class Stack:
     _sentinel = object()
     def __init__(self):
@@ -69,6 +83,12 @@ if __name__ == '__main__':
     for z in zs: print(z)
     for z in zs: print(z)
 
+    ws = foldr(Cons, xs)
+    for w in ws: print(w)
+
+    vs = foldl(flip(Cons), xs)
+    for v in vs: print(v)
+
     ss = Stack()
     ss.push(1)
     ss.push(2)
@@ -79,4 +99,3 @@ if __name__ == '__main__':
         print(ss.pop())
     except Exception as e:
         print(e)
-
