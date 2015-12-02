@@ -118,10 +118,10 @@ namespace consy
         // or V? for some value type V). Of course the right way to
         // do it is to use a union type of T | PrivateSentinel with
         // default(PrivateSentinel), equivalent to what Python does
-        // dynamically, and of course equivalent to Maybe. But .NET
-        // doesn't come with any way to do that built-in, and it
-        // seemed a bit silly to implement Maybe just for this one
-        // use, so I went with overloading instead. Sigh...
+        // dynamically, and of course equivalent to Maybe. So see
+        // MStack below for the obvious (at least to me) way to
+        // do that. But meanwhile, here's an overloading-based
+        // version.
         public T pop(T defval)
         {
             try
@@ -132,6 +132,76 @@ namespace consy
             {
                 return defval;
             }
+        }
+    }
+
+    // What I really want is to be able to use Nothing as a default
+    // parameter value. That is, apparently, not possible. The only
+    // things that can be default parameter values are constants (as
+    // in aliases to literals of built-in types), new instances of value
+    // types, or default constructions of value types. Still, I guess
+    // `defval=default(Maybe<int>)` isn't much worse than the
+    // `deval=Maybe<int>.Nothing` that I wanted. The bigger problem is
+    // that this means Maybe has to be a value type. Which means it's
+    // not covariant (so Maybe<U> is not a subclass of Maybe<T> even if
+    // U is a subclass of T), it can't use default member values or a
+    // nullary constructor and therefore needs a more-complicated and 
+    // less-readable construction mess, etc. On the plus side, being a
+    // value type means no chance of confusion between null and Nothing
+    // (in particular, `default(Maybe<int>)` isn't null), so... thanks?
+    public struct Maybe<T>
+    {
+        readonly T _value;
+        readonly bool _something;
+        private Maybe(T value, bool something) { _value = value; _something = something; }
+        public Maybe(T value) : this(value, true) { }
+
+        // This allows us to do `s.pop(2) instead of `s.pop(new Maybe<int>(2)`
+        public static implicit operator Maybe<T>(T value)
+        {
+            return new Maybe<T>(value);
+        }
+
+        public bool Empty() { return !_something; }
+        // Maybe this is being too clever? But it seems like the best way
+        // to do the C# equivalent of an exhaustive pattern match on maybe...
+        public U Match<U>(Func<T, U> just, Func<U> nothing)
+        {
+            return _something ? just(_value) : nothing();
+        }
+        // And here's the dynamic equivalent, for when you're feeling more
+        // Python than Haskell
+        public static explicit operator T(Maybe<T> m)
+        {
+            if (!m._something) throw new InvalidCastException("Nothing");
+            return m._value;
+        }
+
+        public override string ToString()
+        {
+            return _something ? String.Format("Maybe({0})", _value) : "Maybe.Nothing";
+        }
+
+        // Not very useful given the problems described above, but...
+        public static readonly Maybe<T> Nothing = new Maybe<T>(default(T), false);
+    }
+
+    public class MStack<T>
+    {
+        Cons<T> lst = null;
+        public MStack() { }
+        public void push(T value)
+        {
+            lst = new Cons<T>(value, lst);
+        }
+        // Much simpler than the overload-based version, once you have Maybe
+        public T pop(Maybe<T> defval = default(Maybe<T>))
+        {
+            if (lst == null)
+                return defval.Match(t => t, () => { throw new InvalidOperationException(); });
+            T value = lst.head;
+            lst = lst.tail;
+            return value;
         }
     }
 
@@ -158,6 +228,21 @@ namespace consy
             try
             {
                 Console.WriteLine(ss.pop());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+            var ms = new MStack<int>();
+            ms.push(1);
+            ms.push(2);
+            Console.WriteLine(ms.pop());
+            Console.WriteLine(ms.pop());
+            Console.WriteLine(ms.pop(0));
+            try
+            {
+                Console.WriteLine(ms.pop());
             }
             catch (Exception e)
             {
